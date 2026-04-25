@@ -1,0 +1,11 @@
+node_modules/
+*.log
+client/bin/
+client/obj/
+.DS_Store
+.vercel
+.env
+.env.local
+*.tmp
+data/backups/
+data/logs-*.json

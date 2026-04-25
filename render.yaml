@@ -1,0 +1,24 @@
+# Render.com Blueprint
+# https://render.com/docs/blueprint-spec
+#
+# 一键部署：把仓库推到 GitHub，然后在 Render 里点 New → Blueprint → 选这个仓库
+services:
+  - type: web
+    name: cardkey-system
+    runtime: node
+    plan: free                     # 升级到 starter（$7/月）可保持永不休眠
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: PORT
+        generateValue: false       # Render 自动注入
+    disk:
+      name: cardkey-data
+      mountPath: /var/data
+      sizeGB: 1

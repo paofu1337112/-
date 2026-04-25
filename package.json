@@ -1,0 +1,17 @@
+{
+  "name": "card-key-system",
+  "version": "2.6.0",
+  "description": "卡密管理验证系统（实时仪表盘 + 自动补货 + 多会话 + API 令牌）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules
+client/bin
+client/obj
+client
+test-client
+软件示例
+data/backups
+*.log
+*.tmp

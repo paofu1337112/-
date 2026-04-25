@@ -1,0 +1,52 @@
+{
+  "adminPassword": "scrypt:6456ace8e1350b77f72b3641961d868c:2213abbb01ae81fbcbe6a0d1e7841484718133615c79a6e1a8527e09f6f9a7f30921ab8e208b64868b29ed06a7c86fa9c1e6123629d2f68bb4e2e1bc32bae31c",
+  "adminToken": "0fb48a0d4529919b54b3b4cf597c91102279a5c355c89dc4da42425eb9578b80",
+  "globalRequireSign": false,
+  "rateLimitPerMin": 60,
+  "apps": [
+    {
+      "appid": "demo-app",
+      "name": "演示应用",
+      "secret": "f6eeac3a83a4147f515fef5884a17c1fbcb7862fb2dffdd1",
+      "enabled": true,
+      "requireSign": false,
+      "createdAt": 1776868550649
+    }
+  ],
+  "blacklist": [
+    "KM-00HC-1Z6K-TSAZ-ULKQ",
+    "TEST-AAAA-BBBB-CCCC-DDDD",
+    "TEST-EEEE-FFFF-GGGG-HHHH",
+    "invalid"
+  ],
+  "ipBlacklist": [],
+  "announcement": null,
+  "maintenanceMode": false,
+  "maintenanceMessage": "",
+  "webhooks": [],
+  "webhookDeliveries": [],
+  "apiTokens": [
+    {
+      "id": "1777052194597",
+      "name": "��ؽű�",
+      "tokenHash": "50b55544cd748b9c9fa1b0b2b840862583ff7115e06626662743a1a599d6d03d",
+      "tokenPrefix": "kat_d05d",
+      "tokenSuffix": "5e78",
+      "scope": "read",
+      "createdAt": 1777052194597,
+      "expiresAt": 1779644194597,
+      "lastUsed": 1777052194752,
+      "useCount": 1,
+      "enabled": true
+    }
+  ],
+  "autoStock": {
+    "enabled": false,
+    "threshold": 25,
+    "refillTo": 30,
+    "type": "days",
+    "value": 30,
+    "prefix": "AS",
+    "group": "�Զ�"
+  }
+}
