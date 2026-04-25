@@ -337,8 +337,32 @@ function computeLiveMetrics() {
   };
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+// 静态资源 + 显式根路由（避免 cwd 异常时 "Cannot GET /"）
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const INDEX_HTML = path.join(PUBLIC_DIR, 'index.html');
+app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 app.use('/test', express.static(path.join(__dirname, 'test-client')));
+
+// 显式根路由：保证不依赖 express.static 的索引解析
+app.get('/', (req, res, next) => {
+  if (fs.existsSync(INDEX_HTML)) return res.sendFile(INDEX_HTML);
+  // 降级：返回诊断信息（Render/Vercel 上若 public 目录丢失，至少看得见原因）
+  res.status(500).type('text/plain; charset=utf-8').send(
+    [
+      '⚠ index.html 未找到',
+      '',
+      `__dirname     = ${__dirname}`,
+      `PUBLIC_DIR    = ${PUBLIC_DIR}`,
+      `INDEX_HTML    = ${INDEX_HTML}`,
+      `cwd           = ${process.cwd()}`,
+      `node          = ${process.version}`,
+      `serverless    = ${IS_SERVERLESS}`,
+      '',
+      '请确认仓库根目录就是 card-key-system，并且 public/index.html 已被部署。',
+      '在 Render 上：根目录设置应该指到含有 server.js 与 public/ 的目录。'
+    ].join('\n')
+  );
+});
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -1316,6 +1340,40 @@ app.get('/health', (req, res) => {
     memory: { heapUsedMB: memMB },
     timestamp: Date.now()
   });
+});
+
+// 公开诊断端点：用于排查部署问题（不暴露敏感配置）
+app.get('/diag', (req, res) => {
+  let publicFiles = [];
+  try { publicFiles = fs.readdirSync(PUBLIC_DIR).slice(0, 20); } catch {}
+  let dataFiles = [];
+  try { dataFiles = fs.readdirSync(DATA_DIR).slice(0, 20); } catch {}
+  res.type('text/plain; charset=utf-8').send(
+    [
+      `Card Key System v${SERVER_VERSION} — diagnostic`,
+      `─────────────────────────────────────────`,
+      `time          : ${new Date().toISOString()}`,
+      `node          : ${process.version}`,
+      `platform      : ${process.platform} (${process.arch})`,
+      `serverless    : ${IS_SERVERLESS}`,
+      `cwd           : ${process.cwd()}`,
+      `__dirname     : ${__dirname}`,
+      ``,
+      `PUBLIC_DIR    : ${PUBLIC_DIR}`,
+      `  exists      : ${fs.existsSync(PUBLIC_DIR)}`,
+      `  index.html  : ${fs.existsSync(INDEX_HTML)}`,
+      `  contents    : ${publicFiles.join(', ') || '(empty)'}`,
+      ``,
+      `DATA_DIR      : ${DATA_DIR}`,
+      `  exists      : ${fs.existsSync(DATA_DIR)}`,
+      `  contents    : ${dataFiles.join(', ') || '(empty)'}`,
+      ``,
+      `uptime        : ${Math.floor((Date.now() - SERVER_START) / 1000)}s`,
+      `memory(MB)    : heap=${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} rss=${Math.round(process.memoryUsage().rss / 1024 / 1024)}`,
+      ``,
+      `路由提示：访问 / 应返回管理后台首页；访问 /admin/login 进行登录；/health 健康检查。`
+    ].join('\n')
+  );
 });
 
 // ─── 管理员健康检查（详细，需认证） ──────────────────────────────────────────
@@ -3529,6 +3587,22 @@ if (!IS_SERVERLESS) setTimeout(() => {
   }, true); // 立即执行一次
 }, 2000);
 
+// 404 兜底：所有未匹配路由都返回 JSON（不再是 Express 默认的 "Cannot GET /xxx"）
+app.use((req, res) => {
+  // 静态资源缺失提示（如 /favicon.ico），仍然给 404
+  if (req.path === '/' || req.path === '/index.html') {
+    return res.status(500).type('text/plain; charset=utf-8').send('index.html missing — see /diag');
+  }
+  res.status(404).json({ code: 404, message: '路径未找到', path: req.path, hint: '访问 /diag 查看部署诊断' });
+});
+
+// 错误兜底
+app.use((err, req, res, next) => {
+  console.error('[Express Error]', err && err.stack || err);
+  if (res.headersSent) return;
+  res.status(500).json({ code: 500, message: '服务器内部错误', error: String(err && err.message || err) });
+});
+
 // 直接 node server.js 启动监听；被 require（如 Vercel handler）则只导出 app
 if (require.main === module && !IS_SERVERLESS) {
   server.listen(PORT, () => {
@@ -3538,11 +3612,15 @@ if (require.main === module && !IS_SERVERLESS) {
     console.log('');
     console.log(`  Card Key Management System  v${SERVER_VERSION} Enhanced`);
     console.log('  ────────────────────────────────────────');
-    console.log(`  URL   : http://localhost:${PORT}`);
-    console.log(`  Admin : ${pwDisplay}`);
-    if (cfg.apps && cfg.apps.length) console.log(`  App   : ${cfg.apps[0].appid}`);
-    console.log(`  Features: WebSocket ✓ | Alerts ✓ | Backups ✓ | Analytics ✓ | Live Metrics ✓ | Multi-Session ✓`);
-    if (IS_SERVERLESS) console.log('  Mode  : Serverless (定时任务/WebSocket 已禁用)');
+    console.log(`  URL        : http://localhost:${PORT}`);
+    console.log(`  Admin      : ${pwDisplay}`);
+    if (cfg.apps && cfg.apps.length) console.log(`  App        : ${cfg.apps[0].appid}`);
+    console.log(`  PUBLIC_DIR : ${PUBLIC_DIR} ${fs.existsSync(PUBLIC_DIR) ? '✓' : '✗ (缺失!)'}`);
+    console.log(`  index.html : ${fs.existsSync(INDEX_HTML) ? '✓' : '✗ (缺失!)'}`);
+    console.log(`  DATA_DIR   : ${DATA_DIR} ${fs.existsSync(DATA_DIR) ? '✓' : '✗'}`);
+    console.log(`  cwd        : ${process.cwd()}`);
+    console.log(`  Features   : WebSocket ✓ | Alerts ✓ | Backups ✓ | Analytics ✓ | Live Metrics ✓ | Multi-Session ✓`);
+    if (IS_SERVERLESS) console.log('  Mode       : Serverless (定时任务/WebSocket 已禁用)');
     console.log('');
   });
 }
